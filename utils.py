@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 import os
 import StringIO
+import urllib
 
 import Image
 import ImageDraw
 import ImageColor
+
+import gchart
 
 places = { 'Rondônia' : (80,117),
            'Acre' : (32,110),
@@ -56,3 +59,35 @@ def make_brasil_map(data, finalsize=None):
   dump = StringIO.StringIO()
   mapa.save(dump, 'PNG')
   return dump.getvalue()
+
+
+def multiple_layered_graphs(filename, *graphs):
+  base_size = None
+  for i in xrange(len(graphs)):
+    if i == 0:
+      base_size = graphs[i]['chs']
+    else:
+      if graphs[i]['chs'] != base_size:
+        raise ValueError("All graphs must have same size (chs)")
+    # force transparent background on top layers
+    if i > 0 and not 'chf' in graphs[i]:
+      graphs[i]['chf'] = 'bg,s,FFFFFF00'
+  
+  size = base_size.split('x')
+  size = (int(size[0]), int(size[1]))
+  im = Image.new("RGBA", size)
+  
+  for i in xrange(len(graphs)):
+    g = graphs[i]
+    sio = StringIO.StringIO(urllib.urlopen(gchart.url(**g)).read())
+    temp = Image.open(sio)
+    if i == 0:
+      im.paste(temp, (0, 0) + size)
+    else:
+      im.paste(temp, (0, 0) + size, temp)
+  
+  im.save(filename)
+    
+
+
+  
